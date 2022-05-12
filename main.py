@@ -50,13 +50,15 @@ elif intensity == 'High':
 else:
     style_weight = 100000
 
-#count_of_iterations = st.slider('We recommend one iteration of algorithm by default. With more iterations waiting time will increase', 1, 50, 1)
-#n_iters = count_of_iterations
+count_of_iterations = st.slider('We recommend one iteration of algorithm by default. With more iterations waiting time will increase', 1, 50, 1)
+n_iters = count_of_iterations
 
 if st.button('Generate') and img_style and img_content:
-    result = style_transfer(img_content, img_style, style_weight)
+    progress_bar = st.progress(0)
+    
+    result = style_transfer(img_content, img_style, progress_bar, style_weight, n_iters)
+
     st.image(result)
-    #result.save(f'result_images/{str(random.randint(0, 10000))}.png')
 
 
 

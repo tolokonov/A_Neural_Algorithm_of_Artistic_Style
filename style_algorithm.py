@@ -3,13 +3,14 @@ from copy import deepcopy
 
 import PIL
 from PIL import Image
+import streamlit as st
 
 import torch
 import torch.nn.functional as F
 from torchvision import models
 from torchvision import transforms
 
-def style_transfer(img_content, img_style, style_weight = 10000000, n_iters = 1):
+def style_transfer(img_content, img_style, progress_bar, style_weight = 10000000, n_iters = 1):
     
     img_style = img_style.resize((224, 224), Image.ANTIALIAS)
 
@@ -88,9 +89,10 @@ def style_transfer(img_content, img_style, style_weight = 10000000, n_iters = 1)
     content_weight = 1 #frozen hyperparameter
 
     for i in range(n_iters):
-        
         def closure():
+            optimizer.zero_grad()
             model(optimization_tensor)
+
             content_activations = get_activations(optimization_tensor, hooks, content_activation_names)
             style_activations = get_activations(optimization_tensor, hooks, style_activation_names)
 
@@ -99,8 +101,7 @@ def style_transfer(img_content, img_style, style_weight = 10000000, n_iters = 1)
                 for activation1, activation2 in zip(content_activations, content_target_activations)
             ]
             content_loss = sum(content_losses) * content_weight
-            
-
+                
             style_losses = [
                 style_loss_fn(activation1, gramm2)
                 for activation1, gramm2 in zip(style_activations, style_target_gramm_matrixes)
@@ -108,16 +109,17 @@ def style_transfer(img_content, img_style, style_weight = 10000000, n_iters = 1)
             style_loss = sum(style_losses) * style_weight
 
             loss = content_loss + style_loss
-                
-            optimizer.zero_grad()
+                    
             loss.backward()
-            
+
             return loss
+        
         optimizer.step(closure)
+
+        progress_bar.progress((i + 1) / n_iters)
 
     opt_tensor_numpy = optimization_tensor[0].cpu().detach().numpy()
     pil_image = Image.fromarray(np.array(np.clip(opt_tensor_numpy.transpose(1, 2, 0), 0, 1) * 255, dtype=np.uint8))
     resized = pil_image.resize((content_height, content_width), Image.Resampling.BICUBIC)
 
-    #resized.save('output.jpg')
     return resized
